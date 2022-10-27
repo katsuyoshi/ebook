@@ -5,6 +5,8 @@ require 'base64'
 require "net/http"
 require 'singleton'
 
+# @see: https://github.com/nov/json-jwt
+
 class LineWorks
   include Singleton
 
