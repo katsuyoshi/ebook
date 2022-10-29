@@ -7,6 +7,9 @@ require 'openssl'
 require 'dotenv'
 Dotenv.load
 require './lineworks'
+require './hexabase'
+require './s3'
+
 
 logger = Logger.new('sinatra.log')
 
@@ -43,8 +46,32 @@ def echo_message params
 end
 
 def download_file params
+  user_id = get_user_id params
+  lw = LineWorks.instance
+
+  # download file from Lineworkks
   file_id = get_file_id params
-  res = LineWorks.instance.download_file file_id
+  file_info = LineWorks.instance.download_file file_id
+  lw.send_message user_id, 'ファイルを読み込みました。'
+
+  # create new record
+  hb = Hexabase.instance
+  item = hb.create
+  logger.info item
+  lw.send_message user_id, 'レコードを作りました。'
+
+  # store file to S3 bucket
+  s3 = S3.instance
+  path = s3.upload(file_info[:file_data], File.join(item['record_no'], file_info[:file_name]))
+  logger.info path
+  lw.send_message user_id, 'ファイルをS3に登録しました。'
+
+  # update record
+  item["file_url"] = path
+  item["file_name"] = file_info[:file_name]
+  hb.update item
+  lw.send_message user_id, 'レコードを更新しました。'
+
 end
 
 def dispatch params

@@ -100,7 +100,11 @@ class LineWorks
       http.get(uri.path, header)
     end
     logger.info response
-    File.write(fname, response.body)
+
+    {
+      file_name: fname,
+      file_data: response.body
+    }
   end
     
 end
