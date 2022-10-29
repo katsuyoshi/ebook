@@ -4,21 +4,31 @@ require 'json/jwt'
 require 'base64'
 require "net/http"
 require 'singleton'
+require 'nokogiri'
 
 # @see: https://github.com/nov/json-jwt
 
+
 class LineWorks
   include Singleton
+  
+  def logger
+    @logger ||= Logger.new('sinatra.log')
+  end
 
   def jwt
+    if @jwt_expire_at.nil? || Time.now > @jwt_expire_at
+      @jwt = nil
+    end
     @jwt ||= begin
       private_key = OpenSSL::PKey::RSA.new ENV['LINEWORKS_PRIVATE_KEY']
       header = {"alg" => "RS256", "typ" => "JWT"}
+      @jwt_expire_at = (Time.now + 60 * 60)
       claim = {
           "iss" => ENV['LINEWORKS_CLIENT_ID'],
           "sub" => ENV['LINEWORKS_SERVICE_ACCOUNT'],
           "iat" => Time.now.to_i,
-          "exp" => (Time.now + 60 * 60).to_i
+          "exp" => @jwt_expire_at.to_i
       }
       jwt = JSON::JWT.new(claim)
       
@@ -28,6 +38,9 @@ class LineWorks
   end
 
   def access_token
+    if @access_token_expired_at.nil? || Time.now > @access_token_expired_at
+      @access_token = nil
+    end
     @access_token ||= begin
       uri = URI.parse("https://auth.worksmobile.com/oauth2/v2.0/token")
       http = Net::HTTP.new(uri.host, uri.port)
@@ -41,8 +54,53 @@ class LineWorks
         'scope' => 'bot'
       }
       response = Net::HTTP.post_form(uri, params)
-      JSON.parse(response.body)["access_token"]
+      json = JSON.parse(response.body)
+      @access_token_expired_at = Time.now + json[""].to_f
+      json["access_token"]
     end
+  end
+
+  def send_message userId, message
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/users/#{userId}/messages")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    payload = {
+      "content" => {
+        "type" => "text",
+        "text" => message
+      }
+    }
+    response = Net::HTTP.post(uri, payload.to_json, header)
+  end
+
+  def download_file fileId
+    # get file path
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/attachments/#{fileId}")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.get(uri.path, header)
+    end
+
+    # download file
+    path = Nokogiri::HTML(response.body).search('a').first['href']
+    fname = URI.decode(path.split("/")[-2])
+    uri = URI.parse(path)
+    logger.info uri
+
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.get(uri.path, header)
+    end
+    logger.info response
+    File.write(fname, response.body)
   end
     
 end

@@ -17,6 +17,50 @@ def check_signature body, signature
   digest == signature
 end
 
+def get_message params
+  case params["type"]
+  when "message"
+    params["content"]["text"]
+  else
+    nil
+  end
+end
+
+def get_user_id params
+  params["source"]["userId"]
+end
+
+def get_file_id params
+  params["content"]["fileId"]
+end
+
+
+def echo_message params
+  user_id = get_user_id params
+  message = get_message params
+  res = LineWorks.instance.send_message user_id, message
+  logger.info res
+end
+
+def download_file params
+  file_id = get_file_id params
+  res = LineWorks.instance.download_file file_id
+end
+
+def dispatch params
+  case params["type"]
+  when "message"
+    case params["content"]["type"]
+    when "text"
+      echo_message params
+    when "file"
+      download_file params
+    end
+  end
+end
+
+
+
 get '/' do
   'Hello world!'
 end
@@ -29,5 +73,8 @@ post '/lineworks/callback' do
   params = JSON.parse body
   logger.info headers
   logger.info params
+
+  dispatch params
+
   'OK'
 end
