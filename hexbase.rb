@@ -4,9 +4,6 @@ require "net/http"
 require 'singleton'
 require 'nokogiri'
 
-# @see: https://github.com/nov/json-jwt
-
-
 class Hexbase
   include Singleton
   
@@ -29,7 +26,7 @@ class Hexbase
       end
       p response
       case response
-      when Net::HTTPSuccess, Net::HTTPRedirection
+      when Net::HTTPSuccess
         JSON.parse(response.body)['token']
       else
         nil
@@ -62,7 +59,7 @@ class Hexbase
       http.post(uri.path, payload.to_json, header)
     end
     case response
-    when Net::HTTPSuccess, Net::HTTPRedirection
+    when Net::HTTPSuccess
       JSON.parse(response.body)["item"]
     else
       nil
@@ -74,8 +71,7 @@ end
 
 if $0 == __FILE__
   require 'dotenv'
-  hb = Hexbase.instance
   Dotenv.load
-    #p hb.token
-    p hb.create
+  hb = Hexbase.instance
+  p hb.create
 end
