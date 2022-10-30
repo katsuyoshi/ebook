@@ -35,8 +35,8 @@ class Hexabase
   end
 
   def create
-    app_id = URI.encode(ENV['HEXABASE_PROJECT_DISPLAY_ID'])
-    datastore_id = URI.encode(ENV['HEXABASE_DATASTORE_DISPLAY_ID'])
+    app_id = URI.encode_www_form_component(ENV['HEXABASE_PROJECT_DISPLAY_ID'])
+    datastore_id = URI.encode_www_form_component(ENV['HEXABASE_DATASTORE_DISPLAY_ID'])
     uri = URI.parse(
             File.join(ENV['HEXABASE_API_SERVER'],
             "/api/v0/applications/#{app_id}/datastores/#{datastore_id}/items/new")
@@ -69,8 +69,8 @@ class Hexabase
   end
 
   def update item
-    app_id = URI.encode(ENV['HEXABASE_PROJECT_DISPLAY_ID'])
-    datastore_id = URI.encode(ENV['HEXABASE_DATASTORE_DISPLAY_ID'])
+    app_id = URI.encode_www_form_component(ENV['HEXABASE_PROJECT_DISPLAY_ID'])
+    datastore_id = URI.encode_www_form_component(ENV['HEXABASE_DATASTORE_DISPLAY_ID'])
     item_id = item["i_id"]
     uri = URI.parse(
             File.join(ENV['HEXABASE_API_SERVER'],

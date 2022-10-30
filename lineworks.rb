@@ -89,7 +89,7 @@ class LineWorks
 
     # download file
     path = Nokogiri::HTML(response.body).search('a').first['href']
-    fname = URI.decode(path.split("/")[-2])
+    fname = URI.decode_www_form(path.split("/")[-2])
     uri = URI.parse(path)
     logger.info uri
 

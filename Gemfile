@@ -15,4 +15,4 @@ gem 'aws-sdk-core'
 gem 'aws-sdk-s3'
 gem 'rmagick'
 
-ruby '2.7.6'
+ruby '3.1.2'

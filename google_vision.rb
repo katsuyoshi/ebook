@@ -10,7 +10,6 @@ class GoogleVision
     uri = URI.parse("https://vision.googleapis.com/v1/images:annotate?key=#{ENV['GOOGLE_VISION_API_KEY']}")
     header = {
       'Content-Type' => 'application/json',
-      'Referer' => 'https://itosoft.com/'
     }
     p uri
     payload = {
@@ -26,6 +25,7 @@ class GoogleVision
         }
       ]
     }
+    #puts payload.to_json
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri.path, payload.to_json, header)
     end
@@ -49,6 +49,6 @@ if $0 == __FILE__
   require 'dotenv'
   Dotenv.load
   gv = GoogleVision.instance
-  annotations = gv.ocr(File.read("sample.jpg"))
+  annotations = gv.ocr(File.read("abcdefg.png"))
   p annotations
 end
