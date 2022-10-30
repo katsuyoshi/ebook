@@ -9,6 +9,7 @@ Dotenv.load
 require './lineworks'
 require './hexabase'
 require './s3'
+require './google_vision'
 
 
 logger = Logger.new('sinatra.log')
@@ -79,7 +80,12 @@ def dispatch params
   when "message"
     case params["content"]["type"]
     when "text"
-      echo_message params
+      case get_message(params)
+      when 'gvt'
+        GoogleVision.instance.test
+      else
+        p echo_message params
+      end
     when "file"
       download_file params
     end
