@@ -18,7 +18,8 @@ class S3
 
   def list
     @bucket.objects.each do |obj|
-      puts "#{obj.key} => #{obj.etag}"    end
+      puts "#{obj.key} => #{obj.etag}"
+    end
   end
 
   def upload data, path

@@ -24,7 +24,6 @@ class Hexabase
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
         http.post(uri.path, payload.to_json, header)
       end
-      p response
       case response
       when Net::HTTPSuccess
         JSON.parse(response.body)['token']
@@ -41,7 +40,6 @@ class Hexabase
             File.join(ENV['HEXABASE_API_SERVER'],
             "/api/v0/applications/#{app_id}/datastores/#{datastore_id}/items/new")
     )
-    p uri
     header = {
       'Authorization' => "Bearer #{token}",
       'Content-Type' => 'application/json'
@@ -61,7 +59,6 @@ class Hexabase
     case response
     when Net::HTTPSuccess
       json = JSON.parse(response.body)
-      p json
       json["item"]
     else
       nil
@@ -76,7 +73,6 @@ class Hexabase
             File.join(ENV['HEXABASE_API_SERVER'],
             "/api/v0/applications/#{app_id}/datastores/#{datastore_id}/items/edit/#{item_id}")
     )
-    p uri
     header = {
       'Authorization' => "Bearer #{token}",
       'Content-Type' => 'application/json'
@@ -92,11 +88,9 @@ class Hexabase
       'ensure_transaction' => true,
       'is_force_update' => true,
     }
-    p payload
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri.path, payload.to_json, header)
     end
-    p response
     case response
     when Net::HTTPSuccess
       JSON.parse(response.body)["item"]

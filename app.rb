@@ -84,7 +84,7 @@ def dispatch params
       when 'gvt'
         GoogleVision.instance.test
       else
-        p echo_message params
+        echo_message params
       end
     when "file"
       download_file params

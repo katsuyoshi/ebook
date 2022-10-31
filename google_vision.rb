@@ -62,7 +62,7 @@ class GoogleVision
   end
 
   def ocr image
-    uri = URI.parse("https://vision.googleapis.com/v1/images:annotate?key=#{ENV['GOOGLE_VISION_API_KEY']}")
+    uri = URI.parse("https://vision.googleapis.com/v1/images:annotate")
     header = {
       "Authorization" => "Bearer #{access_token}",
       'Content-Type' => 'application/json',
@@ -80,7 +80,6 @@ class GoogleVision
         }
       ]
     }
-    #puts payload.to_json
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri.path, payload.to_json, header)
     end
