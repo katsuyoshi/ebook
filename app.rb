@@ -56,7 +56,6 @@ end
 def send_message message, params 
   user_id = get_user_id params
   res = LineWorks.instance.send_message user_id, message
-  logger.info res
 end
 
 def echo_message params
@@ -72,34 +71,23 @@ def regist_file params
   lw = LineWorks.instance
 
   # download file from Lineworkks
-  logger.info "downloading file from Lineworks"
   file_id = get_file_id params
   file_info = LineWorks.instance.download_file file_id
-p file_info[:file_name]
   unless %w(png jpg jpeg pdf).include?(File.extname(file_info[:file_name])[1..-1])
     send_message '画像またはPDFファイルをアップロードしてください。', params
     return
   end
-  logger.info "downloaded file from Lineworks"
 
   # create new record
-  logger.info "creating a record"
   hb = Hexabase.instance
   item = hb.create
-  logger.info item
-  logger.info "created a record"
   lw.send_message user_id, 'レコードを作りました。'
   $session[:item] = item
   logger.info item
 
   # store file to S3 bucket
-  logger.info "storing a file"
-  logger.info item['record_no']
-  logger.info file_info[:file_name]
   s3 = S3.instance
   path = s3.upload(file_info[:file_data], File.join(item['record_no'], file_info[:file_name]))
-  logger.info path
-  logger.info "stored a file"
   lw.send_message user_id, 'ファイルを登録しました。'
 
   # update record
@@ -107,13 +95,10 @@ p file_info[:file_name]
   item["file_name"] = file_info[:file_name]
 
   # processing image
-  logger.info "getting slip"
   gv = GoogleVision.instance
   slip = gv.ocr file_info[:file_data]
-p slip
   $session[:slip] = slip
   lw.send_message user_id, '画像を読み取りました。'
-  logger.info "got slip"
   logger.info slip
 
   $session[:state] = REGIST_STATE_SHOW_SUMMARY
@@ -131,7 +116,6 @@ end
 def regist_slip
   hb = Hexabase.instance
   # update record
-  logger.info "updating the record"
   slip = $session[:slip]
   item = $session[:item]
   item['deal_kind'] = slip.deal_kind
@@ -141,7 +125,6 @@ def regist_slip
   item['file']
   item['更新日時'] = Time.now.iso8601
   hb.update item
-  logger.info "updated the record"
 end
 
 def handle_state params
@@ -184,7 +167,6 @@ p "*" * 40, params, $session
     case params["content"]["text"]
     when "帳簿登録"
       $session[:state] ||= REGIST_STATE_REQUEST_IMAGE
-p $session[:state]
       send_message "画像またはPDFファイルをアップロードしてください。", params
     when "lwbt"
       user_id = get_user_id params
@@ -214,8 +196,6 @@ post '/lineworks/callback' do
   return 400 unless check_signature body, headers['HTTP_X_WORKS_SIGNATURE']
 
   params = JSON.parse body
-  logger.info headers
-  logger.info params
 
   dispatch params
 
