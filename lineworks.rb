@@ -76,6 +76,31 @@ class LineWorks
     response = Net::HTTP.post(uri, payload.to_json, header)
   end
 
+  def query_buttons userId, message, candidates
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/users/#{userId}/messages")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    payload = {
+      "content" => {
+        "type" => "button_template",
+        "contentText" => message,
+        "actions" => candidates.map do |t|
+          {
+            "type" => "message",
+            "label" => t,
+            "postback" => t
+          }
+        end
+      }
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.post(uri, payload.to_json, header)
+    end
+  end
+
   def download_file fileId
     # get file path
     botId = ENV['LINEWORKS_BOT_ID']
@@ -89,7 +114,7 @@ class LineWorks
 
     # download file
     path = Nokogiri::HTML(response.body).search('a').first['href']
-    fname = URI.decode_www_form(path.split("/")[-2])
+    fname = URI.decode_www_form(path.split("/")[-2]).first.first
     uri = URI.parse(path)
     logger.info uri
 

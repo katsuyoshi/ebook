@@ -4,6 +4,7 @@ require 'singleton'
 require 'json/jwt'
 require 'base64'
 require 'openssl'
+require './slip'
 
 
 # @see: https://zenn.dev/yusukeiwaki/scraps/9882b13700ac82
@@ -62,6 +63,7 @@ class GoogleVision
   end
 
   def ocr image
+=begin
     uri = URI.parse("https://vision.googleapis.com/v1/images:annotate")
     header = {
       "Authorization" => "Bearer #{access_token}",
@@ -85,10 +87,14 @@ class GoogleVision
     end
     case response
     when Net::HTTPSuccess
-      JSON.parse(response.body)
+      h = JSON.parse(response.body)
+      Slip.new h['responses'].first['textAnnotations'].first['description']
     else
       nil
     end
+=end
+    h = JSON.parse(File.read('annotations.json'))
+    Slip.new h['responses'].first['textAnnotations'].first['description']
 
   end
 
@@ -102,6 +108,7 @@ if $0 == __FILE__
   require 'dotenv'
   Dotenv.load
   gv = GoogleVision.instance
-  annotations = gv.ocr(File.read("abcdefg.png"))
+  annotations = gv.ocr(File.read("receipt.jpg"))
   p annotations
+  File.write('annotations.json', JSON.dump(annotations))
 end
