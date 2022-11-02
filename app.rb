@@ -19,14 +19,16 @@ logger = Logger.new('sinatra.log')
 token = LineWorks.instance.access_token
 
 
-REGIST_STATE_IDLE             = 0
-REGIST_STATE_REQUEST_IMAGE    = 1
-REGIST_STATE_UPLOADING        = 2
-REGIST_STATE_SHOW_SUMMARY     = 3
-REGIST_STATE_SHOW_SUMMARY_RES = 4
-REGIST_STATE_QUERY_DEAL_AT    = 5
-REGIST_STATE_QUERY_COMPANY    = 6
-REGIST_STATE_QUERY_AMOUNT     = 7
+REGIST_STATE_IDLE                 = 0
+REGIST_STATE_REQUEST_IMAGE        = 1
+REGIST_STATE_UPLOADING            = 2
+REGIST_STATE_SHOW_SUMMARY         = 3
+REGIST_STATE_SHOW_SUMMARY_RES     = 4
+REGIST_STATE_SELECT_EDIT_PROPERTY = 5
+REGIST_STATE_EDIT_DEAL_KIND       = 6
+REGIST_STATE_EDIT_DEAL_AT         = 7
+REGIST_STATE_EDIT_CUSTOMER        = 8
+REGIST_STATE_EDIT_TOTAL           = 9
 
 $session = {}
 
@@ -110,7 +112,7 @@ def send_query_buttons message, candidates, params
 end
 
 def reset
-  $session = []
+  $session = {}
 end
 
 def regist_slip
@@ -136,23 +138,65 @@ def handle_state params
     $session[:state] = REGIST_STATE_SHOW_SUMMARY_RES
   
   when REGIST_STATE_SHOW_SUMMARY_RES
-    case params["content"]["postback"]
+    case params["content"]["text"]
     when "はい"
       regist_slip
       send_message "登録しました。", params
       reset
 
     when "いいえ"
-      send_query_buttons get_user_id(params), "書類: #{slip.deal_kind}\n取引日: #{slip.deal_at.strftime('%m月%d日')}\n相手先: #{slip.customer}\n金額: #{slip.total}\nで登録しますか？", ["はい", "いいえ"], params
+      send_query_buttons "どの項目を変更しますか？", ["書類", "取引日", '相手先', '金額', '登録を中止'], params
+      $session[:state] = REGIST_STATE_SELECT_EDIT_PROPERTY
     end
-
-  when REGIST_STATE_QUERY_DEAL_AT
-    case params["content"]["postback"]
-    when "はい"
-    when "いいえ"
+  
+  when REGIST_STATE_SELECT_EDIT_PROPERTY
+    case params["content"]["text"]
+    when '書類'
+      send_query_buttons "書類の種類は？", %w(見積書 注文書 請求書 納品書 領収書), params
+      $session[:state] = REGIST_STATE_EDIT_DEAL_KIND
+    when '取引日'
+      send_message "取引日は？", params
+      $session[:state] = REGIST_STATE_EDIT_DEAL_AT
+    when '相手先'
+      slip = $session[:slip]
+      send_query_buttons "相手先は？", slip.candidate_customers[0,2], params
+      $session[:state] = REGIST_STATE_EDIT_CUSTOMER
+    when '金額'
+      send_message "金額は？", params
+      $session[:state] = REGIST_STATE_EDIT_TOTAL
+    when '登録を中止'
+      reset
+      send_message "中止しました。", params
     else
-      send_message get_user_id(params), "取引日は#{$session[:item]["deal_at"].strftime('%m月%d日')}ですか？", ["はい", "いいえ"], params
+      handle_state params
+      $session[:state] = REGIST_STATE_SHOW_SUMMARY
     end
+  
+
+  when REGIST_STATE_EDIT_DEAL_KIND
+    slip = $session[:slip]
+    slip.deal_kind = params["content"]["postback"] || params["content"]["text"]
+    $session[:state] = REGIST_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when REGIST_STATE_EDIT_DEAL_AT
+    slip = $session[:slip]
+    slip.deal_at = params["content"]["postback"] || params["content"]["text"]
+    $session[:state] = REGIST_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when REGIST_STATE_EDIT_CUSTOMER
+    slip = $session[:slip]
+    slip.customer = params["content"]["postback"] || params["content"]["text"]
+    $session[:state] = REGIST_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when REGIST_STATE_EDIT_TOTAL
+    slip = $session[:slip]
+    slip.total = params["content"]["postback"] || params["content"]["text"]
+    $session[:state] = REGIST_STATE_SHOW_SUMMARY
+    handle_state params
+
   end
 end
 

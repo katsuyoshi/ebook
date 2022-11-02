@@ -1,9 +1,10 @@
 require 'json'
+require 'date'
 
 class Slip
 
   attr_reader :text
-  attr_accessor :deal_kind, :deal_at, :customer, :total
+  attr_accessor :deal_kind, :customer, :total
 
   def initialize text
     @text = text
@@ -15,6 +16,28 @@ class Slip
 
   def deal_at
     @deal_at || candidate_deal_at
+  end
+
+  def deal_at= time
+    case time
+    when '今日', /today/i
+      @deal_at = Date.today.to_time
+    when '昨日', /yesterday/i
+      @deal_at = Date.today.to_time - 24 * 60 * 60
+    when '一昨日', /day before yesterday/i
+      @deal_at = Date.today.to_time - 2 * 24 * 60 * 60
+    when String
+      if /月/
+        unless /年/ =~ time
+          time = "#{Time.now.year}年" + time
+        end
+        @deal_at = Date.strptime(time, "%Y年%m月%d日").to_time
+      else
+        @deal_at = Date.parse(time).to_time
+      end
+    else
+      @deal_at = time.to_time
+    end
   end
 
   def customer
@@ -37,7 +60,7 @@ class Slip
         k,
         text.scan(/#{k}/).size
       ]
-    end.sort{|a,b| b.first <=> a.first}
+    end.sort{|a,b| b.last <=> a.last}
     .first.first + "書"
   end
 
@@ -69,5 +92,12 @@ if $0 == __FILE__
   p s.candidate_customers
   slip = s
   p "書類: #{slip.candidate_deal_kind}\n取引日: #{slip.candidate_deal_at.strftime('%m月%d日')}\n相手先: #{slip.candidate_customers.first}\n金額: #{slip.candidate_total}\nで登録しますか？", ["はい", "いいえ"]
+
+  s.deal_at = "今日"; p s.deal_at
+  s.deal_at = "今日"; p [s.deal_at, s.deal_at == Date.today.to_time]
+  s.deal_at = "昨日"; p [s.deal_at, s.deal_at == Date.today.to_time - 24 * 60 * 60]
+  s.deal_at = "一昨日"; p [s.deal_at, s.deal_at == Date.today.to_time - 2 * 24 * 60 * 60]
+  s.deal_at = "2022年11月2日"; p s.deal_at
+  s.deal_at = "11月2日"; p s.deal_at
 end
 

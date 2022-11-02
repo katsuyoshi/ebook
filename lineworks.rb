@@ -90,8 +90,8 @@ class LineWorks
         "actions" => candidates.map do |t|
           {
             "type" => "message",
-            "label" => t,
-            "postback" => t
+            "label" => t[0,20],
+            "postback" => t,
           }
         end
       }
@@ -99,6 +99,7 @@ class LineWorks
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri, payload.to_json, header)
     end
+    response
   end
 
   def download_file fileId
