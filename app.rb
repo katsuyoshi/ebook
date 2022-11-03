@@ -104,13 +104,9 @@ def regist_file params
 
   # processing image
   gv = GoogleVision.instance
-  dst = File.join("./tmp/#{file_info[:file_name]}")
-  mkdir_p File.dirname(dst)
-  File.write dst, file_info[:file_data]
-  image = Magick::Image.read(dst).first
+  image = Magick::Image.from_blob(file_info[:file_data]).first
   if /pdf$/i =~ File.extname(file_info[:file_name])[1..-1]
-    File.write('./tmp/image.pdf', image)
-    image = Magick::Image.read('./tmp/image.pdf').first do
+    image = Magick::Image.from_blob(file_info[:file_data]).first do
       self.quality = 100
       self.density = 200
     end
