@@ -4,6 +4,8 @@ require 'logger'
 require 'base64'
 require 'openssl'
 require 'rmagick'
+require 'time'
+require 'fileutils'
 
 require 'dotenv'
 Dotenv.load
@@ -11,6 +13,8 @@ require './lineworks'
 require './hexabase'
 require './s3'
 require './google_vision'
+
+include FileUtils
 
 #enable :sessions
 
@@ -25,11 +29,12 @@ REGIST_STATE_REQUEST_IMAGE        = 1
 REGIST_STATE_UPLOADING            = 2
 REGIST_STATE_SHOW_SUMMARY         = 3
 REGIST_STATE_SHOW_SUMMARY_RES     = 4
-REGIST_STATE_SELECT_EDIT_PROPERTY = 5
-REGIST_STATE_EDIT_DEAL_KIND       = 6
-REGIST_STATE_EDIT_DEAL_AT         = 7
-REGIST_STATE_EDIT_CUSTOMER        = 8
-REGIST_STATE_EDIT_TOTAL           = 9
+REGIST_STATE_DUPPLICATED_RES      = 5
+REGIST_STATE_SELECT_EDIT_PROPERTY = 6
+REGIST_STATE_EDIT_DEAL_KIND       = 7
+REGIST_STATE_EDIT_DEAL_AT         = 8
+REGIST_STATE_EDIT_CUSTOMER        = 9
+REGIST_STATE_EDIT_TOTAL           = 10
 
 $session = {}
 
@@ -99,10 +104,13 @@ def regist_file params
 
   # processing image
   gv = GoogleVision.instance
-  image = file_info[:file_data]
+  dst = File.join("./tmp/#{file_info[:file_name]}")
+  mkdir_p File.dirname(dst)
+  File.write dst, file_info[:file_data]
+  image = Magick::Image.read(dst).first
   if /pdf$/i =~ File.extname(file_info[:file_name])[1..-1]
-    File.write('image.pdf', image)
-    image = Magick::Image.read('image.pdf').first do
+    File.write('./tmp/image.pdf', image)
+    image = Magick::Image.read('./tmp/image.pdf').first do
       self.quality = 100
       self.density = 200
     end
@@ -127,9 +135,9 @@ def reset
   $session = {}
 end
 
-def regist_slip
+def regist_slip force = false
   hb = Hexabase.instance
-  # update record
+
   slip = $session[:slip]
   item = $session[:item]
   item['deal_kind'] = slip.deal_kind
@@ -137,8 +145,18 @@ def regist_slip
   item['customer'] = slip.customer
   item['total'] = slip.total
   item['file']
-  item['更新日時'] = Time.now.iso8601
+  item['更新日時'] = Time.now.to_s
+
+  # check dupplicated
+  unless force
+    items = hb.query_item item
+p items
+    return :dupplicated unless items.size == 0
+  end
+
+  # update record
   hb.update item
+  :ok
 end
 
 def handle_state params
@@ -152,14 +170,36 @@ def handle_state params
   when REGIST_STATE_SHOW_SUMMARY_RES
     case params["content"]["text"]
     when "はい"
-      regist_slip
-      send_message "登録しました。", params
-      reset
+      case regist_slip
+      when :ok
+        send_message "登録しました。", params
+        reset
+      when :dupplicated
+        send_query_buttons "同じ様な書類が登録されています。このまま登録しますか？", ["はい", "いいえ"], params
+        $session[:state] = REGIST_STATE_DUPPLICATED_RES
+      end
 
     when "いいえ"
       send_query_buttons "どの項目を変更しますか？", ["書類", "取引日", '相手先', '金額', '登録を中止'], params
       $session[:state] = REGIST_STATE_SELECT_EDIT_PROPERTY
     end
+
+  when REGIST_STATE_DUPPLICATED_RES
+    case params["content"]["text"]
+    when "はい"
+      case regist_slip true
+      when :ok
+        send_message "登録しました。", params
+        reset
+      else
+        send_message "登録に失敗しました。", params
+        reset
+      end
+    when "いいえ"
+      send_message "登録を中止しました。", params
+      reset
+    end
+
   
   when REGIST_STATE_SELECT_EDIT_PROPERTY
     case params["content"]["text"]
