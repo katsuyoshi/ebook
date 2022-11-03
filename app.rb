@@ -3,6 +3,7 @@ require 'sinatra/reloader'
 require 'logger'
 require 'base64'
 require 'openssl'
+require 'rmagick'
 
 require 'dotenv'
 Dotenv.load
@@ -98,7 +99,18 @@ def regist_file params
 
   # processing image
   gv = GoogleVision.instance
-  slip = gv.ocr file_info[:file_data]
+  image = file_info[:file_data]
+  if /pdf$/i =~ File.extname(file_info[:file_name])[1..-1]
+    File.write('image.pdf', image)
+    image = Magick::Image.read('image.pdf').first do
+      self.quality = 100
+      self.density = 200
+    end
+  end
+  while image.to_blob.bytesize >= 2_000_000
+    image = image.resize(0.9)
+  end
+  slip = gv.ocr image
   $session[:slip] = slip
   lw.send_message user_id, '画像を読み取りました。'
   logger.info slip
