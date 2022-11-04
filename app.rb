@@ -146,7 +146,6 @@ def regist_slip force = false
   # check dupplicated
   unless force
     items = hb.query_item item
-p items
     return :dupplicated unless items.size == 0
   end
 

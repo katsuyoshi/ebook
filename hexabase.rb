@@ -139,7 +139,6 @@ class Hexabase
       'return_number_value' => true,
       'use_display_id' => true,
     }
-p payload
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri.path, payload.to_json, header)
     end
