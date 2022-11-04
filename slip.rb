@@ -76,13 +76,13 @@ class Slip
   end
 
   def candidate_deal_kind
-    %w(見積 注文 請求 納品 領収).map do |k|
+    %w(見積書 注文書 請求書 納品書 領収書).map do |k|
       [
         k,
         text.scan(/#{k}/).size
       ]
     end.sort{|a,b| b.last <=> a.last}
-    .first.first + "書"
+    .first.first
   end
 
   def candidate_customers

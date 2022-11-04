@@ -130,6 +130,7 @@ end
 
 def reset
   $session = {}
+  Hexabase.instance.clean
 end
 
 def regist_slip force = false
@@ -217,6 +218,7 @@ def handle_state params
       $session[:state] = REGIST_STATE_EDIT_TOTAL
     when '登録を中止'
       reset
+      
       send_message "中止しました。", params
     else
       handle_state params
