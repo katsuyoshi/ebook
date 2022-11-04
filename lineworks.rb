@@ -5,6 +5,8 @@ require 'base64'
 require "net/http"
 require 'singleton'
 require 'nokogiri'
+require 'openssl'
+require 'dotenv'
 
 # @see: https://github.com/nov/json-jwt
 
@@ -132,5 +134,76 @@ class LineWorks
       file_data: response.body
     }
   end
+
+  def bot_menu
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/persistentmenu")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.get(uri, header)
+    end
+    case response
+    when Net::HTTPSuccess
+      JSON.parse(response.body)['content']
+    else
+      nil
+    end
+  end
+
+  def regist_bot_menu
+    content = bot_menu
+    action1 = {
+      'type' => 'message',
+      'label' => '帳簿登録'
+    }
+    action2 = {
+      'type' => 'message',
+      'label' => '帳簿検索'
+    }
+    actions = content['actions']
+    changed = false
+    unless actions.include? action1
+      actions << action1
+      changed = true
+    end
+    unless actions.include? action2
+      actions << action2
+      changed = true
+    end
+    return unless changed
+
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/persistentmenu")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    payload = {
+      'content' => {
+        'actions' => actions,
+      }
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.post(uri, payload.to_json, header)
+    end
+    case response
+    when Net::HTTPSuccess
+      JSON.parse(response.body)['content']
+    else
+      nil
+    end
+
+  end
     
 end
+
+
+if $0 == __FILE__
+  Dotenv.load
+  lw = LineWorks.instance
+  lw.regist_bot_menu
+end
+
