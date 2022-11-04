@@ -50,8 +50,12 @@ class Slip
 
 
   def candidate_deal_at
-    text.scan(/((\d{4})年)?(\d{1,2})月(\d{1,2})日|((\d{4})\/)?(\d{1,2})\/(\d{1,2})/)
-      .map{|a| Time.new((a[1]||a[9]||Time.now.year.to_s).to_i, (a[2]||a[10]).to_i, (a[3]||a[11]).to_i)}.sort.first
+    begin
+     text.scan(/((\d{4})年)?(\d{1,2})月(\d{1,2})日|((\d{4})\/)?(\d{1,2})\/(\d{1,2})/)
+      .map{|a| p a; Time.new((a[1]||a[9]||Time.now.year.to_s).to_i, (a[2]||a[10]).to_i, (a[3]||a[11]).to_i)}.sort.first
+    rescue
+      nil
+    end
   end
 
   def candidate_deal_kind
@@ -85,6 +89,12 @@ class Slip
 end
 
 if $0 == __FILE__
+  s = "株式会社いろは\n請求書\n123-456-7890\nno_reply@example.com\n123-4567\nxxxx\n1-2-34\n8: 123-4567\nxx県xx市xx町1-2-34\n株式会社にほへと\n部署名\n加納 尚子様\nB: 1/8/20\nプロジェクトタイトル: プロジェクト名\nプロジェクトの説明: 説明を記入\n注文番号: 12345\n請求書番号: 67890\n詳細\n項目1\n項目2\n項目3\n数量\n1\n税額\n55\n13\n25\n単価\n¥100.00\n¥90.00\n¥50.00\n小計\n合計\n10.00%\nお世話になっております。 プロジェクトでご一緒できて光栄です。\n次のご注文は30日以内に出荷されます。\n今後ともよろしくお願いします。\n永田次郎"
+  s = Slip.new(s)
+  s.deal_at
+  exit
+
+
   s = Slip.new JSON.parse(File.read("annotations.json"))['responses'].first['textAnnotations'].first['description']
   p s.candidate_deal_kind
   p s.candidate_total

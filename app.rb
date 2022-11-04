@@ -114,7 +114,7 @@ def regist_file params
   while image.to_blob.bytesize >= 2_000_000
     image = image.resize(0.9)
   end
-  slip = gv.ocr image
+  slip = gv.ocr image.to_blob
   $session[:slip] = slip
   lw.send_message user_id, '画像を読み取りました。'
   logger.info slip
@@ -160,7 +160,7 @@ def handle_state params
   case $session[:state]
   when REGIST_STATE_SHOW_SUMMARY
     slip = $session[:slip]
-    send_query_buttons "書類: #{slip.deal_kind}\n取引日: #{slip.deal_at.strftime('%m月%d日')}\n相手先: #{slip.customer}\n金額: #{slip.total}\nで登録しますか？", ["はい", "いいえ"], params
+    send_query_buttons "書類: #{slip.deal_kind}\n取引日: #{slip.deal_at.strftime('%m月%d日') if slip.deal_at}\n相手先: #{slip.customer}\n金額: #{slip.total}\nで登録しますか？", ["はい", "修正する", "中止する"], params
     $session[:state] = REGIST_STATE_SHOW_SUMMARY_RES
   
   when REGIST_STATE_SHOW_SUMMARY_RES
@@ -175,9 +175,12 @@ def handle_state params
         $session[:state] = REGIST_STATE_DUPPLICATED_RES
       end
 
-    when "いいえ"
+    when "修正する"
       send_query_buttons "どの項目を変更しますか？", ["書類", "取引日", '相手先', '金額', '登録を中止'], params
       $session[:state] = REGIST_STATE_SELECT_EDIT_PROPERTY
+
+    when "中止する"
+      reset
     end
 
   when REGIST_STATE_DUPPLICATED_RES

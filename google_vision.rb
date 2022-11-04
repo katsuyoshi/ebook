@@ -63,7 +63,6 @@ class GoogleVision
   end
 
   def ocr image
-=begin
     uri = URI.parse("https://vision.googleapis.com/v1/images:annotate")
     header = {
       "Authorization" => "Bearer #{access_token}",
@@ -92,9 +91,10 @@ class GoogleVision
     else
       nil
     end
-=end
+=begin
     h = JSON.parse(File.read('annotations.json'))
     Slip.new h['responses'].first['textAnnotations'].first['description']
+=end
 
   end
 
