@@ -24,7 +24,7 @@ class SlipTest < Test::Unit::TestCase
   end
 
   def test_candidate_deal_at
-    expected = [ Time.new(2022,1,2), Time.new(2022, 11, 3)]
+    expected = [ Time.new(2022,1,2), Time.new(2022, 11, 3)].reverse
     assert_equal expected, @slip.candidate_deal_at
   end
 
@@ -75,7 +75,7 @@ class SlipDealAtTest < Test::Unit::TestCase
       Time.new(2022,3,4),
       Time.new(2022,3,5),
       Time.new(2022,5,6),
-    ]
+    ].reverse
     assert_equal expected, @slip.candidate_deal_at
   end
 

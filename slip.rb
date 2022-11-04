@@ -69,7 +69,7 @@ class Slip
       end
       
       tomorrow = (Date.today + 1).to_time
-      a.select{|e| e && e < tomorrow}.sort.uniq
+      a.select{|e| e && e < tomorrow}.sort.uniq.reverse
     rescue
       nil
     end
