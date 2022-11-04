@@ -15,7 +15,7 @@ class Slip
   end
 
   def deal_at
-    @deal_at || candidate_deal_at
+    @deal_at || candidate_deal_at.first
   end
 
   def deal_at= time
@@ -45,14 +45,31 @@ class Slip
   end
 
   def total
-    @total || candidate_total
+    @total || candidate_total.first
   end
 
 
   def candidate_deal_at
     begin
-     text.scan(/((\d{4})年)?(\d{1,2})月(\d{1,2})日|((\d{4})\/)?(\d{1,2})\/(\d{1,2})/)
-      .map{|a| p a; Time.new((a[1]||a[9]||Time.now.year.to_s).to_i, (a[2]||a[10]).to_i, (a[3]||a[11]).to_i)}.sort.first
+      a = text.scan(/((\d{4})年)?(\d{1,2})月(\d{1,2})日|((\d{4})\/)?(\d{1,2})\/(\d{1,2})|((\d{4})\-)?(\d{1,2})\-(\d{1,2})/)
+      .map do |a|
+        t = Time.new(
+          (a[1]||a[5]||a[9]||Time.now.year.to_s).to_i,
+          (a[2]||a[6]||a[10]).to_i,
+          (a[3]||a[7]||a[11]).to_i
+        ) rescue nil
+      end
+      
+      a += text.scan(/(\d{1,2})\/(\d{1,2})(\/(\d{4}))?|(\d{1,2})\-(\d{1,2})(\-(\d{4}))?/).map do |a|
+        Time.new(
+          (a[3]||a[7]||Time.now.year.to_s).to_i,
+          (a[0]||a[4]).to_i,
+          (a[1]||a[5]).to_i
+        )rescue nil
+      end
+      
+      tomorrow = (Date.today + 1).to_time
+      a.select{|e| e && e < tomorrow}.sort.uniq
     rescue
       nil
     end
@@ -69,6 +86,11 @@ class Slip
   end
 
   def candidate_customers
+    a = text.lines.select do |l|
+      /(株式|有限|法人|合同|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
+    end
+    return a.map{|e| e.chomp} unless a.empty?
+
     text.lines.select do |k|
       unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
         true
@@ -79,11 +101,7 @@ class Slip
   end
 
   def candidate_total
-    if /合計.*?¥?([\d,.]+)円?/ =~ text
-      $1
-    else
-      nil
-    end
+    text.scan(/(¥?(\d+[\d\,\.]+)円?)/).select{|a| a.first =~ /[¥円]/}.map{|a| a[1].gsub(/\,/, '').to_i }.uniq.sort.reverse
   end
 
 end

@@ -19,7 +19,7 @@ include FileUtils
 #enable :sessions
 
 
-logger = Logger.new('sinatra.log')
+logger = Logger.new('web.log')
 
 token = LineWorks.instance.access_token
 
@@ -105,16 +105,17 @@ def regist_file params
   # processing image
   gv = GoogleVision.instance
   image = Magick::Image.from_blob(file_info[:file_data]).first
-  if /pdf$/i =~ File.extname(file_info[:file_name])[1..-1]
+  if /pdf/i =~ image.format
     image = Magick::Image.from_blob(file_info[:file_data]).first do
       self.quality = 100
       self.density = 200
     end
   end
+  image.format = 'jpg'
   while image.to_blob.bytesize >= 2_000_000
     image = image.resize(0.9)
   end
-  slip = gv.ocr image.to_blob
+  slip = gv.ocr image.to_blob()
   $session[:slip] = slip
   lw.send_message user_id, '画像を読み取りました。'
   logger.info slip

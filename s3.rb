@@ -29,7 +29,7 @@ class S3
   end
 
   def logger
-    @logger ||= Logger.new('sinatra.log')
+    @logger ||= Logger.new('web.log')
   end
 
 end

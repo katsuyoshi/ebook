@@ -56,6 +56,7 @@ GEM
     nokogiri (1.13.9)
       mini_portile2 (~> 2.8.0)
       racc (~> 1.4)
+    power_assert (2.0.2)
     puma (6.0.0)
       nio4r (~> 2.0)
     racc (1.6.0)
@@ -75,6 +76,8 @@ GEM
       rack-protection (= 3.0.2)
       sinatra (= 3.0.2)
       tilt (~> 2.0)
+    test-unit (3.5.5)
+      power_assert
     tilt (2.0.11)
     tzinfo (2.0.5)
       concurrent-ruby (~> 1.0)
@@ -93,6 +96,7 @@ DEPENDENCIES
   rmagick
   sinatra
   sinatra-contrib
+  test-unit
 
 RUBY VERSION
    ruby 3.1.2p20

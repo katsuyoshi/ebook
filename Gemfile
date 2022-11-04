@@ -15,4 +15,9 @@ gem 'aws-sdk-core'
 gem 'aws-sdk-s3'
 gem 'rmagick'
 
+group :test do
+  gem 'test-unit'
+end
+
+
 ruby '3.1.2'

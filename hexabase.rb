@@ -8,7 +8,7 @@ class Hexabase
   include Singleton
   
   def logger
-    @logger ||= Logger.new('sinatra.log')
+    @logger ||= Logger.new('web.log')
   end
 
   def token

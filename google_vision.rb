@@ -12,7 +12,12 @@ require './slip'
 
 class GoogleVision
   include Singleton
-  
+
+  def logger
+    @logger ||= Logger.new('web.log')
+  end
+
+
   def jwt
     if @jwt_expire_at.nil? || Time.now > @jwt_expire_at
       @jwt = nil
@@ -87,6 +92,7 @@ class GoogleVision
     case response
     when Net::HTTPSuccess
       h = JSON.parse(response.body)
+      logger.info h
       Slip.new h['responses'].first['textAnnotations'].first['description']
     else
       nil
