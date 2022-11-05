@@ -3,19 +3,14 @@ require 'date'
 
 class Slip
 
-  attr_reader :filename
+  attr_reader :text
 
-  def initialize text, filename = nil
+  def initialize text
     @text = text
-    @filename = filename
-  end
-
-  def text
-    (@filename || "") + @text
   end
 
   def deal_kind
-    @deal_kind || candidate_deal_kind
+    @deal_kind || candidate_deal_kinds.first
   end
 
   def deal_kind= kind
@@ -91,22 +86,24 @@ class Slip
     end
   end
 
-  def candidate_deal_kind
-    %w(見積書 注文書 請求書 納品書 領収書).map do |k|
-      [
-        k,
-        text.scan(/#{k}/).size
-      ]
-    end.sort{|a,b| b.last <=> a.last}
-    .first.first
+  def candidate_deal_kinds
+    a = text.scan(/見積書|見積もり書|見積り書|注文書|請求書|納品書|領収書/)
+    a.map do |e|
+      case e
+      when '見積もり書', '見積り書'
+        '見積書'
+      else
+        e
+      end
+    end.uniq
   end
 
   def candidate_customers
     a = text.lines.select do |l|
-      /(株式|有限|法人|合同|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
+      /(株式|有限|法人|合同|様|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
     end
     a += text.lines.select do |k|
-      unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
+      unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日|、|。|@)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
         true
       else
         false
@@ -118,7 +115,7 @@ class Slip
         /#{n}/ =~ e
       end
     end
-    a.map(&:chomp).uniq[0,5]
+    a.map(&:chomp).map{|e| /(.+)様/ =~ e ? $1 : e}.uniq[0,5]
   end
 
   def candidate_total
@@ -135,12 +132,12 @@ if $0 == __FILE__
 
 
   s = Slip.new JSON.parse(File.read("annotations.json"))['responses'].first['textAnnotations'].first['description']
-  p s.candidate_deal_kind
+  p s.candidate_deal_kinds
   p s.candidate_total
   p s.candidate_deal_at
   p s.candidate_customers
   slip = s
-  p "書類: #{slip.candidate_deal_kind}\n取引日: #{slip.candidate_deal_at.strftime('%m月%d日')}\n相手先: #{slip.candidate_customers.first}\n金額: #{slip.candidate_total}\nで登録しますか？", ["はい", "いいえ"]
+  p "書類: #{slip.candidate_deal_kinds.first}\n取引日: #{slip.candidate_deal_at.strftime('%m月%d日')}\n相手先: #{slip.candidate_customers.first}\n金額: #{slip.candidate_total}\nで登録しますか？", ["はい", "いいえ"]
 
   s.deal_at = "今日"; p s.deal_at
   s.deal_at = "今日"; p [s.deal_at, s.deal_at == Date.today.to_time]

@@ -120,7 +120,7 @@ p [item['record_no'], file_info[:file_name]]
   while image.to_blob.bytesize >= 2_000_000
     image = image.resize(0.9)
   end
-  slip = gv.ocr image.to_blob()
+  slip = gv.ocr image.to_blob(), file_info[:file_name]
   $session[:slip] = slip
   lw.send_message user_id, '画像を読み取りました。'
   logger.info slip

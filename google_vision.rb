@@ -67,7 +67,7 @@ class GoogleVision
     end
   end
 
-  def ocr image
+  def ocr image, filename = nil
     uri = URI.parse("https://vision.googleapis.com/v1/images:annotate")
     header = {
       "Authorization" => "Bearer #{access_token}",
@@ -93,7 +93,7 @@ class GoogleVision
     when Net::HTTPSuccess
       h = JSON.parse(response.body)
       logger.info h
-      Slip.new h['responses'].first['textAnnotations'].first['description']
+      Slip.new((filename ? "#{filename}\n" : "") + h['responses'].first['textAnnotations'].first['description'])
     else
       nil
     end
