@@ -14,7 +14,7 @@ class SlipTest < Test::Unit::TestCase
       '(株)いろは',
       '(有)いろは',
       '（株）いろは',
-      '（有）にほへと',
+      #'（有）にほへと',
     ]
     assert_equal expected, @slip.candidate_customers
   end

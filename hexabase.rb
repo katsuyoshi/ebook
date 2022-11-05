@@ -3,6 +3,15 @@ require 'time'
 require "net/http"
 require 'singleton'
 require 'nokogiri'
+require 'active_support/all'
+require 'debug'
+
+class Time
+  def to_hb_iso8601
+    self.utc.iso8601.gsub(/Z/, '.000Z')
+  end
+end
+
 
 class Hexabase
   include Singleton
@@ -78,7 +87,7 @@ class Hexabase
       'Content-Type' => 'application/json'
     }
 
-    item['更新日時'] = Time.now.iso8601
+    item['更新日時'] = Time.now.to_hb_iso8601
     #item['rev_no'] = item['rev_no'] + 1
     item.delete 'rev_no'
     payload = {
@@ -102,7 +111,6 @@ class Hexabase
   def query_item item
     app_id = URI.encode_www_form_component(ENV['HEXABASE_PROJECT_DISPLAY_ID'])
     datastore_id = URI.encode_www_form_component(ENV['HEXABASE_DATASTORE_DISPLAY_ID'])
-    item_id = item["i_id"]
     uri = URI.parse(
             File.join(ENV['HEXABASE_API_SERVER'],
             "/api/v0/applications/#{app_id}/datastores/#{datastore_id}/items/search")
@@ -113,13 +121,13 @@ class Hexabase
     }
     payload = {
       'conditions' => 
-        %w(deal_kind deal_at customer total).map do |k|
+        %w(deal_kind deal_at customer total created_at updated_at).map do |k|
           if item.keys.include? k
             case k
-            when 'deal_at'
+            when 'deal_at', 'created_at', 'updated_at'
               {
                 'id' => k,
-                'search_value' => [item[k].iso8601.gsub(/\+/, '.000+')],
+                'search_value' => time_search_value_of(item[k]),
               }
             when 'total'
               {
@@ -143,8 +151,9 @@ class Hexabase
       'use_display_id' => true,
     }
 
-    payload['conditions'].each do |h|
-      h['exact_match'] => true unless h == payload['conditions'].last
+    c = payload['conditions'].size
+    payload['conditions'].each_with_index do |h, i|
+      h['exact_match'] = true unless i == c - 1
     end
 
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
@@ -203,6 +212,78 @@ p response
   def clean
     items = query_item 'deal_kind' => nil
     delete items
+  end
+
+
+  private
+
+  def time_search_value_of time
+    from = to = nil
+    case time
+    when '今日'
+      from = Time.now.beginning_of_day
+      to = from + 1.day
+    when '昨日'
+      from = Time.now.beginning_of_day - 1.day
+      to = from + 1.day
+    when '一昨日'
+      from = Time.now.beginning_of_day - 2.days
+      to = from + 1.day
+    when '今週'
+      from = Time.now.beginning_of_day - Time.now.wday.days
+      to = from + 7.days
+    when '先週', '前週'
+      from = Time.now.beginning_of_day - (Time.now.wday + 7).days
+      to = from + 7.days
+    when '今月'
+      from = Time.now.beginning_of_month
+      to = from.end_of_month.ceil
+    when '先月', '前月'
+      from = (Time.now.beginning_of_month - 1.day).beginning_of_month
+      to = from.end_of_month.ceil
+    when '今年'
+      from = Time.now.beginning_of_year
+      to = from.end_of_year + 1
+    when '去年'
+      from = (Time.now.beginning_of_year - 1.day).beginning_of_year
+      to = from.end_of_year.ceil
+    when '一昨年'
+      from = ((Time.now.beginning_of_year - 1.day).beginning_of_year - 1.day).beginning_of_year
+      to = from.end_of_year.ceil
+    when /(\d{1,4})日/
+      to = Time.now.end_of_day.ceil
+      from = to - $1.to_i.days
+    when /(\d{1,2})月/
+      y = Time.now.year
+      from = Time.new(y, $1.to_i, 1)
+      from = Time.new(y - 1, $1.to_i, 1) if Time.now < from
+      to = from.end_of_month.ceil
+    when /(\d{4})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\-(\s*(\d{4})\s*\/)?\s*(\d{1,2})\s*\/\s*(\d{1,2})/
+      from = Time.new($1.to_i, $2.to_i, $3.to_i)
+      y = from.year
+      to =  Time.new(($5||y).to_i, $6.to_i, $7.to_i)
+      to =  Time.new(($5||y + 1).to_i, $6.to_i, $7.to_i) if to < from
+    when /(\d{1,2})\s*\/\s*(\d{1,2})\s*\-\s*(\d{1,2})\s*\/\s*(\d{1,2})/
+      y = Time.now.year
+      from = Time.new(y, $1.to_i, $2.to_i)
+      to =  Time.new(y, $3.to_i, $4.to_i)
+      to =  Time.new(y + 1, $3.to_i, $4.to_i) if to < from
+    when Time
+      from = time
+    end
+
+    if from && from.class == Time
+      from = from.to_hb_iso8601
+    end
+    if to && to.class == Time
+      to = to.to_hb_iso8601
+    end
+    if to
+      [from, to]
+    else
+      [from]
+    end
+
   end
 
 end

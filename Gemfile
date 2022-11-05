@@ -14,9 +14,12 @@ gem 'kintone_rb'
 gem 'aws-sdk-core'
 gem 'aws-sdk-s3'
 gem 'rmagick'
+gem 'activesupport'
 
 group :test do
   gem 'test-unit'
+  gem 'mocha'
+  gem 'debug'
 end
 
 

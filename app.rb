@@ -85,16 +85,21 @@ def regist_file params
     send_message '画像またはPDFファイルをアップロードしてください。', params
     return
   end
+  logger.info "downloaded a file"
 
   # create new record
+  logger.info "creating a new record"
   hb = Hexabase.instance
   item = hb.create
   lw.send_message user_id, 'レコードを作りました。'
   $session[:item] = item
+p item
+  logger.info "created a new record"
   logger.info item
 
   # store file to S3 bucket
   s3 = S3.instance
+p [item['record_no'], file_info[:file_name]]
   path = s3.upload(file_info[:file_data], File.join(item['record_no'], file_info[:file_name]))
   lw.send_message user_id, 'ファイルを登録しました。'
 
@@ -145,6 +150,7 @@ def regist_slip force = false
   item['file']
   item['更新日時'] = Time.now.to_s
 
+p slip, item
   # check dupplicated
   unless force
     items = hb.query_item item

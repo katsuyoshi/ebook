@@ -3,15 +3,23 @@ require 'date'
 
 class Slip
 
-  attr_reader :text
-  attr_accessor :deal_kind, :customer, :total
+  attr_reader :filename
 
-  def initialize text
+  def initialize text, filename = nil
     @text = text
+    @filename = filename
+  end
+
+  def text
+    (@filename || "") + @text
   end
 
   def deal_kind
     @deal_kind || candidate_deal_kind
+  end
+
+  def deal_kind= kind
+    @deal_kind = kind
   end
 
   def deal_at
@@ -44,8 +52,16 @@ class Slip
     @customer || candidate_customers.first
   end
 
+  def customer= customer
+    @customer = customer
+  end
+
   def total
     @total || candidate_total.first
+  end
+
+  def total= total
+    @total = total
   end
 
 
@@ -53,7 +69,7 @@ class Slip
     begin
       a = text.scan(/((\d{4})年)?(\d{1,2})月(\d{1,2})日|((\d{4})\/)?(\d{1,2})\/(\d{1,2})|((\d{4})\-)?(\d{1,2})\-(\d{1,2})/)
       .map do |a|
-        t = Time.new(
+        Time.new(
           (a[1]||a[5]||a[9]||Time.now.year.to_s).to_i,
           (a[2]||a[6]||a[10]).to_i,
           (a[3]||a[7]||a[11]).to_i
@@ -89,15 +105,20 @@ class Slip
     a = text.lines.select do |l|
       /(株式|有限|法人|合同|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
     end
-    return a.map{|e| e.chomp} unless a.empty?
-
-    text.lines.select do |k|
+    a += text.lines.select do |k|
       unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
         true
       else
         false
       end
-    end[0,3].map{|e| e.chomp}
+    end
+
+    ENV['OWN_COMPANY_NAMES'].split(':').each do |n|
+      a.delete_if do |e|
+        /#{n}/ =~ e
+      end
+    end
+    a.map(&:chomp).uniq[0,5]
   end
 
   def candidate_total

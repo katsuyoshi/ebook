@@ -25,6 +25,9 @@ GEM
       aws-eventstream (~> 1, >= 1.0.2)
     bindata (2.4.13)
     concurrent-ruby (1.1.10)
+    debug (1.6.3)
+      irb (>= 1.3.6)
+      reline (>= 0.3.1)
     dotenv (2.8.1)
     faraday (2.6.0)
       faraday-net_http (>= 2.0, < 3.1)
@@ -36,6 +39,9 @@ GEM
     faraday-net_http (3.0.1)
     i18n (1.12.0)
       concurrent-ruby (~> 1.0)
+    io-console (0.5.11)
+    irb (1.4.2)
+      reline (>= 0.3.0)
     jmespath (1.6.1)
     json-jwt (1.16.1)
       activesupport (>= 4.2)
@@ -48,6 +54,8 @@ GEM
       faraday-multipart
     mini_portile2 (2.8.0)
     minitest (5.16.3)
+    mocha (2.0.1)
+      ruby2_keywords (>= 0.0.5)
     multi_json (1.15.0)
     multipart-post (2.2.3)
     mustermann (3.0.0)
@@ -63,6 +71,8 @@ GEM
     rack (2.2.4)
     rack-protection (3.0.2)
       rack
+    reline (0.3.1)
+      io-console (~> 0.5)
     rmagick (5.0.0)
     ruby2_keywords (0.0.5)
     sinatra (3.0.2)
@@ -86,11 +96,14 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  activesupport
   aws-sdk-core
   aws-sdk-s3
+  debug
   dotenv
   json-jwt
   kintone_rb
+  mocha
   nokogiri
   puma
   rmagick
