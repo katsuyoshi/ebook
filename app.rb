@@ -30,11 +30,12 @@ REGIST_STATE_UPLOADING            = 2
 REGIST_STATE_SHOW_SUMMARY         = 3
 REGIST_STATE_SHOW_SUMMARY_RES     = 4
 REGIST_STATE_DUPPLICATED_RES      = 5
-REGIST_STATE_SELECT_EDIT_PROPERTY = 6
-REGIST_STATE_EDIT_DEAL_KIND       = 7
-REGIST_STATE_EDIT_DEAL_AT         = 8
-REGIST_STATE_EDIT_CUSTOMER        = 9
-REGIST_STATE_EDIT_TOTAL           = 10
+REGIST_STATE_EDIT_DEAL_KIND       = 6
+REGIST_STATE_EDIT_DEAL_AT         = 7
+REGIST_STATE_EDIT_CUSTOMER        = 8
+REGIST_STATE_EDIT_TOTAL           = 9
+REGIST_STATE_QUERY_REPEAT         = 10
+REGIST_STATE_QUERY_REPEAT_RES     = 11
 
 $session = {}
 
@@ -165,14 +166,22 @@ end
 def handle_state params
   lw = LineWorks.instance
   case $session[:state]
+  when REGIST_STATE_REQUEST_IMAGE
+    case params["content"]["text"]
+
+    when "中止する"
+      send_message "中止しました。", params
+      reset
+    end
+
   when REGIST_STATE_SHOW_SUMMARY
     slip = $session[:slip]
-    send_query_buttons "書類: #{slip.deal_kind}\n取引日: #{slip.deal_at.strftime('%m月%d日') if slip.deal_at}\n相手先: #{slip.customer}\n金額: #{slip.total}\nで登録しますか？", ["はい", "修正する", "中止する"], params
+    send_query_buttons "書類: #{slip.deal_kind}\n取引日: #{slip.deal_at.strftime('%m月%d日') if slip.deal_at}\n相手先: #{slip.customer}\n金額: #{slip.total}\nで登録しますか？", ["登録します", "種類を修正します", "取引日を修正します", "相手先を修正します", "金額を修正します", "登録を中止します"], params
     $session[:state] = REGIST_STATE_SHOW_SUMMARY_RES
   
   when REGIST_STATE_SHOW_SUMMARY_RES
     case params["content"]["text"]
-    when "はい"
+    when "登録します"
       case regist_slip
       when :ok
         send_message "登録しました。", params
@@ -182,12 +191,24 @@ def handle_state params
         $session[:state] = REGIST_STATE_DUPPLICATED_RES
       end
 
-    when "修正する"
-      send_query_buttons "どの項目を変更しますか？", ["書類", "取引日", '相手先', '金額', '登録を中止'], params
-      $session[:state] = REGIST_STATE_SELECT_EDIT_PROPERTY
-
-    when "中止する"
-      reset
+    when '種類を修正します'
+      send_query_buttons "書類の種類は？", %w(見積書 注文書 請求書 納品書 領収書), params
+      $session[:state] = REGIST_STATE_EDIT_DEAL_KIND
+    when '取引日を修正します'
+      send_message "取引日は？", params
+      $session[:state] = REGIST_STATE_EDIT_DEAL_AT
+    when '相手先を修正します'
+      slip = $session[:slip]
+      send_query_buttons "相手先は？", slip.candidate_customers[0,2], params
+      $session[:state] = REGIST_STATE_EDIT_CUSTOMER
+    when '金額を修正します'
+      send_message "金額は？", params
+      $session[:state] = REGIST_STATE_EDIT_TOTAL
+    when '登録を中止します'
+      $session[:state] = REGIST_STATE_QUERY_REPEAT
+      handle_state params
+    else
+      $session[:state] = REGIST_STATE_SHOW_SUMMARY
     end
 
   when REGIST_STATE_DUPPLICATED_RES
@@ -196,41 +217,18 @@ def handle_state params
       case regist_slip true
       when :ok
         send_message "登録しました。", params
-        reset
+        $session[:state] = REGIST_STATE_QUERY_REPEAT
+        handle_state params
       else
         send_message "登録に失敗しました。", params
-        reset
+        $session[:state] = REGIST_STATE_QUERY_REPEAT
+        handle_state params
       end
     when "いいえ"
       send_message "登録を中止しました。", params
-      reset
-    end
-
-  
-  when REGIST_STATE_SELECT_EDIT_PROPERTY
-    case params["content"]["text"]
-    when '書類'
-      send_query_buttons "書類の種類は？", %w(見積書 注文書 請求書 納品書 領収書), params
-      $session[:state] = REGIST_STATE_EDIT_DEAL_KIND
-    when '取引日'
-      send_message "取引日は？", params
-      $session[:state] = REGIST_STATE_EDIT_DEAL_AT
-    when '相手先'
-      slip = $session[:slip]
-      send_query_buttons "相手先は？", slip.candidate_customers[0,2], params
-      $session[:state] = REGIST_STATE_EDIT_CUSTOMER
-    when '金額'
-      send_message "金額は？", params
-      $session[:state] = REGIST_STATE_EDIT_TOTAL
-    when '登録を中止'
-      reset
-      
-      send_message "中止しました。", params
-    else
+      $session[:state] = REGIST_STATE_QUERY_REPEAT
       handle_state params
-      $session[:state] = REGIST_STATE_SHOW_SUMMARY
     end
-  
 
   when REGIST_STATE_EDIT_DEAL_KIND
     slip = $session[:slip]
@@ -256,6 +254,10 @@ def handle_state params
     $session[:state] = REGIST_STATE_SHOW_SUMMARY
     handle_state params
 
+  when REGIST_STATE_QUERY_REPEAT
+    $session[:state] = REGIST_STATE_REQUEST_IMAGE
+    send_query_buttons "画像またはPDFファイルをアップロードしてください。", ["中止する"], params
+
   end
 end
 
@@ -270,7 +272,7 @@ p "*" * 40, params, $session
     case params["content"]["text"]
     when "帳簿登録"
       $session[:state] ||= REGIST_STATE_REQUEST_IMAGE
-      send_message "画像またはPDFファイルをアップロードしてください。", params
+      send_query_buttons "画像またはPDFファイルをアップロードしてください。", ["中止する"], params
     when "lwbt"
       user_id = get_user_id params
       LineWorks.instance.query_buttons user_id, "選択してね？", ["A", "B"]
