@@ -37,6 +37,17 @@ REGIST_STATE_EDIT_TOTAL           = 9
 REGIST_STATE_QUERY_REPEAT         = 10
 REGIST_STATE_QUERY_REPEAT_RES     = 11
 
+QUERY_STATE_SHOW_SUMMARY          = 100
+QUERY_STATE_SHOW_SUMMARY_RES      = 101
+QUERY_STATE_EDIT_DEAL_KIND        = 102
+QUERY_STATE_EDIT_DEAL_AT          = 103
+QUERY_STATE_EDIT_DEAL_CUSTOMER    = 104
+QUERY_STATE_EDIT_DEAL_TOTAL       = 105
+QUERY_STATE_SHOW_RESULT           = 106
+QUERY_STATE_SHOW_RESULT_RES       = 107
+
+QUERY_RESULT_VIEW_SIZE            = 5
+
 $session = {}
 
 def check_signature body, signature
@@ -136,7 +147,6 @@ end
 
 def reset
   $session = {}
-  Hexabase.instance.clean
 end
 
 def regist_slip force = false
@@ -163,6 +173,35 @@ p slip, item
   :ok
 end
 
+
+def description_of item
+  a = []
+  a << "書類: #{item['deal_kind']}" if item['deal_kind']
+  a << "取引日: #{item['deal_at']}" if item['deal_at']
+  a << "相手先: #{item['customer']}" if item['customer']
+  a << "金額: #{item['total']}円" if item['total']
+  a.join("\n")
+end
+
+def short_description_of item
+  a = []
+  a << "#{item['deal_kind']}" if item['deal_kind']
+  a << "#{item['deal_at']}" if item['deal_at']
+  a << "#{item['customer']}" if item['customer']
+  a << "#{item['total']}円" if item['total']
+  a.join(", ")
+end
+
+
+def query_item
+  hb = Hexabase.instance
+  item = $session[:item]
+  $session[:items] = hb.query_item item
+  $session[:items_index] = 0
+end
+
+  
+
 def handle_state params
   lw = LineWorks.instance
   case $session[:state]
@@ -172,6 +211,7 @@ def handle_state params
     when "中止する"
       send_message "中止しました。", params
       reset
+      Hexabase.instance.clean
     end
 
   when REGIST_STATE_SHOW_SUMMARY
@@ -185,8 +225,9 @@ def handle_state params
       case regist_slip
       when :ok
         send_message "登録しました。", params
-        reset
-      when :dupplicated
+        $session[:state] = REGIST_STATE_QUERY_REPEAT
+        handle_state params
+        when :dupplicated
         send_query_buttons "同じ様な書類が登録されています。このまま登録しますか？", ["はい", "いいえ"], params
         $session[:state] = REGIST_STATE_DUPPLICATED_RES
       end
@@ -234,6 +275,7 @@ def handle_state params
     slip = $session[:slip]
     slip.deal_kind = params["content"]["postback"] || params["content"]["text"]
     $session[:state] = REGIST_STATE_SHOW_SUMMARY
+p $session
     handle_state params
 
   when REGIST_STATE_EDIT_DEAL_AT
@@ -258,7 +300,123 @@ def handle_state params
     $session[:state] = REGIST_STATE_REQUEST_IMAGE
     send_query_buttons "画像またはPDFファイルをアップロードしてください。", ["中止する"], params
 
+
+
+
+  when QUERY_STATE_SHOW_SUMMARY
+p __LINE__, $session
+    item = $session[:item] || {}
+    m = description_of(item)
+    buttons = %w(種類条件を修正します 取引日条件を修正します 相手先条件を修正します 金額条件を修正します 検索を中止します)
+    
+    buttons = ['検索します'] + buttons unless m.empty?
+    m = m.empty? ? "検索条件を入力してください" : "検索条件は以下のとおりです\n" + m
+    p [m, buttons]
+
+    send_query_buttons m, buttons, params
+    $session[:state] = QUERY_STATE_SHOW_SUMMARY_RES
+
+  when QUERY_STATE_SHOW_SUMMARY_RES
+    case params["content"]["text"]
+    when "検索します"
+      query_item
+      $session[:state] = QUERY_STATE_SHOW_RESULT
+      handle_state params
+
+    when '種類条件を修正します'
+      send_query_buttons "書類の種類は？", %w(見積書 注文書 請求書 納品書 領収書), params
+      $session[:state] = QUERY_STATE_EDIT_DEAL_KIND
+ 
+    when '取引日条件を修正します'
+      send_message "取引日条件は？", params
+      $session[:state] = QUERY_STATE_EDIT_DEAL_AT
+ 
+    when '相手先条件を修正します'
+      send_message "相手先条件は？", params
+      $session[:state] = QUERY_STATE_EDIT_DEAL_CUSTOMER
+ 
+    when '金額条件を修正します'
+      send_message "金額条件は？", params
+      $session[:state] = QUERY_STATE_EDIT_DEAL_TOTAL
+
+    end
+ 
+  when QUERY_STATE_EDIT_DEAL_KIND
+    item = $session[:item] || {}
+    item['deal_kind'] = params["content"]["postback"] || params["content"]["text"]
+    $session[:item] = item
+    $session[:state] = QUERY_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when QUERY_STATE_EDIT_DEAL_AT
+    item = $session[:item] || {}
+    item['deal_at'] = params["content"]["postback"] || params["content"]["text"]
+    $session[:item] = item
+    $session[:state] = QUERY_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when QUERY_STATE_EDIT_DEAL_CUSTOMER
+    item = $session[:item] || {}
+    item['customer'] = params["content"]["postback"] || params["content"]["text"]
+    $session[:item] = item
+    $session[:state] = QUERY_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when QUERY_STATE_EDIT_DEAL_TOTAL
+    item = $session[:item] || {}
+    item['total'] = params["content"]["postback"] || params["content"]["text"]
+    $session[:item] = item
+    $session[:state] = QUERY_STATE_SHOW_SUMMARY
+    handle_state params
+
+  when QUERY_STATE_SHOW_RESULT
+    items = $session[:items]
+    index = $session[:items_index]
+    view = items[index...(index + QUERY_RESULT_VIEW_SIZE)]
+
+    m = if view.empty?
+      m = "該当レコードはありません"
+    else
+      view.map{|i| short_description_of i}.join('\n')
+    end
+
+    buttons = []
+    unless view.empty?
+      buttons << "前のデータを見る" unless index == 0
+      buttons << "次のデータを見る" if index + QUERY_RESULT_VIEW_SIZE < items.size
+      buttons << "CSVファイルをダウンロードする"
+    end
+    buttons << "終了する"
+    send_query_buttons m, buttons, params
+    $session[:state] = QUERY_STATE_SHOW_RESULT_RES
+
+  when QUERY_STATE_SHOW_RESULT_RES
+    case params["content"]["text"]
+    when "前のデータを見る"
+      $session[:index] -= QUERY_RESULT_VIEW_SIZE
+      $session[:state] = QUERY_STATE_SHOW_RESULT
+      handle_state params
+
+    when "次のデータを見る"
+      $session[:index] += QUERY_RESULT_VIEW_SIZE
+      $session[:state] = QUERY_STATE_SHOW_RESULT
+      handle_state params
+    
+    when "CSVファイルをダウンロードする"
+      # TODO
+      reset
+      $session[:state] = QUERY_STATE_SHOW_SUMMARY
+      handle_state params
+
+    when "終了する"
+      reset
+      $session[:state] = QUERY_STATE_SHOW_SUMMARY
+      handle_state params
+
+    end
+
   end
+
 end
 
 def dispatch params
@@ -273,6 +431,11 @@ p "*" * 40, params, $session
     when "帳簿登録"
       $session[:state] ||= REGIST_STATE_REQUEST_IMAGE
       send_query_buttons "画像またはPDFファイルをアップロードしてください。", ["中止する"], params
+
+    when '帳簿検索'
+      $session[:state] ||= QUERY_STATE_SHOW_SUMMARY
+      handle_state params
+      
     when "lwbt"
       user_id = get_user_id params
       LineWorks.instance.query_buttons user_id, "選択してね？", ["A", "B"]
