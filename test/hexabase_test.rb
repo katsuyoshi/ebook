@@ -17,9 +17,14 @@ class HexabaseTest < Test::Unit::TestCase
     @hb = Hexabase.instance
   end
 
-  def test_query_deal_at_this_month
+  def test_query_customer
     Time.stubs(:now).returns(Time.local(2022,11,4))
-    assert_equal([], @hb.query_item('deal_at' => '今月'))
+    assert_equal(1, @hb.query_item('customer' => '秋月電子').size)
+  end
+
+  def test_query_deal_at_last_month
+    Time.stubs(:now).returns(Time.local(2022,11,4))
+    assert_equal([], @hb.query_item('deal_at' => '先月'))
   end
 
   def test_query_deal_kind_order

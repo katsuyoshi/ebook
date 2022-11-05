@@ -121,7 +121,8 @@ class Hexabase
     }
     payload = {
       'conditions' => 
-        %w(deal_kind deal_at customer total created_at updated_at).map do |k|
+        %w(deal_kind deal_at customer total).map do |k|
+          p "item[#{k}] = #{item[k]}"
           if item.keys.include? k
             case k
             when 'deal_at', 'created_at', 'updated_at'
@@ -138,24 +139,20 @@ class Hexabase
               {
                 'id' => k,
                 'search_value' => [item[k]],
-                'exact_match' => true,
               }
             end
           else
             nil
           end
         end.select{|e| e},
+      'use_or_condition' => false,
       'per_page' => 0,
       'page' => 1,
       'return_number_value' => true,
       'use_display_id' => true,
     }
 
-    c = payload['conditions'].size
-    payload['conditions'].each_with_index do |h, i|
-      h['exact_match'] = true unless i == c - 1
-    end
-
+    logger.info payload
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
       http.post(uri.path, payload.to_json, header)
     end
@@ -211,6 +208,8 @@ p response
 
   def clean
     items = query_item 'deal_kind' => nil
+    # file_name未対応なので全部消去される
+    #items += query_item 'file_name' => nil
     delete items
   end
 
@@ -268,7 +267,7 @@ p response
       from = Time.new(y, $1.to_i, $2.to_i)
       to =  Time.new(y, $3.to_i, $4.to_i)
       to =  Time.new(y + 1, $3.to_i, $4.to_i) if to < from
-    when Time
+    else
       from = time
     end
 
