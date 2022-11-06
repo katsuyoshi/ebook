@@ -99,14 +99,22 @@ class Slip
   end
 
   def candidate_customers
-    a = text.lines.select do |l|
-      /(株式|有限|法人|合同|様|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
-    end
-    a += text.lines.select do |k|
-      unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日|、|。|@)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
-        true
+    a = text.lines.select.with_index do |l,i|
+      if i == 0
+        nil
       else
-        false
+        /(株式|有限|法人|合同|様|Inc|co[\,\.\']ltd|[\(（][株有合][\)）])/i =~ l
+      end
+    end
+    a += text.lines.select.with_index do |k,i|
+      if i == 0
+        nil
+      else
+        unless /(^(\||=|\-|\+)+$)|(見積|注文|請求|納品|領収|アイテム|支払|トピック|検索|住所|更新|数量|価格|割引|計|年|月|日|、|。|@)|([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})|^¥?([\d,.]+)円?$/ =~ k
+          true
+        else
+          false
+        end
       end
     end
 

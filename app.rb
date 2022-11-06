@@ -6,6 +6,9 @@ require 'openssl'
 require 'rmagick'
 require 'time'
 require 'fileutils'
+require 'csv'
+require 'securerandom'
+
 
 require 'dotenv'
 Dotenv.load
@@ -78,6 +81,11 @@ def send_message message, params
   res = LineWorks.instance.send_message user_id, message
 end
 
+def send_link title, url, params
+  user_id = get_user_id params
+  res = LineWorks.instance.send_link title, url, user_id
+end
+
 def echo_message params
   message = get_message params
   send_message message, params
@@ -90,7 +98,7 @@ def regist_file params
   user_id = get_user_id params
   lw = LineWorks.instance
 
-  # download file from Lineworkks
+  # download file from Lineworks
   file_id = get_file_id params
   file_info = LineWorks.instance.download_file file_id
   unless %w(png jpg jpeg pdf).include?(File.extname(file_info[:file_name])[1..-1])
@@ -123,10 +131,10 @@ p [item['record_no'], file_info[:file_name]]
   gv = GoogleVision.instance
   image = Magick::Image.from_blob(file_info[:file_data]).first
   if /pdf/i =~ image.format
-    image = Magick::Image.from_blob(file_info[:file_data]).first do
-      self.quality = 100
-      self.density = 200
-    end
+    image = Magick::Image.from_blob(file_info[:file_data]).first# do
+    #  self.quality = 100
+    #  self.density = 200
+    #end
   end
   image.format = 'jpg'
   while image.to_blob.bytesize >= 2_000_000
@@ -339,6 +347,10 @@ p __LINE__, $session
       send_message "金額条件は？", params
       $session[:state] = QUERY_STATE_EDIT_DEAL_TOTAL
 
+    when '検索を中止します'
+      send_message "検索を終了しました", params
+      reset
+
     end
  
   when QUERY_STATE_EDIT_DEAL_KIND
@@ -403,7 +415,16 @@ p __LINE__, $session
       handle_state params
     
     when "CSVファイルをダウンロードする"
-      # TODO
+      csv_string = CSV.generate do |csv|
+        csv << %w(取引日 書類 相手先 金額 ファイルURL)
+        $session[:items].each do |item|
+          csv << %w(deal_at deal_kind customer total file_url).map{|k| item[k]}
+        end
+      end
+      path = File.join('csv', "#{SecureRandom.uuid}.csv")
+      url = S3.instance.upload(csv_string, path)
+p "*" * 40
+      send_link "CSVファイル", url, params
       reset
       $session[:state] = QUERY_STATE_SHOW_SUMMARY
       handle_state params

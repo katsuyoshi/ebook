@@ -78,6 +78,31 @@ class LineWorks
     response = Net::HTTP.post(uri, payload.to_json, header)
   end
 
+  def send_link title, url, userId
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/users/#{userId}/messages")
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    payload = {
+      "content" => {
+        "type" => "button_template",
+        "contentText" => title,
+        "actions" => [
+          {
+          "type" => "uri",
+          "label" => title,
+          "uri" => url,
+          }
+        ]
+      }
+    }
+p payload
+    response = Net::HTTP.post(uri, payload.to_json, header)
+p response, response.body
+  end
+
   def query_buttons userId, message, candidates
     botId = ENV['LINEWORKS_BOT_ID']
     uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/users/#{userId}/messages")
@@ -192,6 +217,46 @@ class LineWorks
     case response
     when Net::HTTPSuccess
       JSON.parse(response.body)['content']
+    else
+      nil
+    end
+
+  end
+
+  def upload_file path, filename
+    botId = ENV['LINEWORKS_BOT_ID']
+    uri = URI.parse("https://www.worksapis.com/v1.0/bots/#{botId}/attachments")
+
+    header = {
+      "Authorization" => "Bearer #{access_token}",
+      "Content-Type" => "application/json"
+    }
+    payload = {
+      'fileName' => filename
+    }
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      http.post(uri, payload.to_json, header)
+    end
+    case response
+    when Net::HTTPSuccess
+      r = JSON.parse(response.body)
+
+      s = "curl -XPOST '#{r['uploadUrl']}' -H 'Authorization: Bearer #{access_token}' -H 'Content-Type: multipart/form-data' -F 'resourceName=#{filename}' -F 'FileData=@#{path}'"
+p s
+      system(s)
+
+
+=begin
+      uri = URI.parse(r['uploadUrl'])
+      boundary='----WebKitFormBoundary7MA4YWxkTrZu0gW'
+      header = {
+        "Authorization" => "Bearer #{access_token}",
+        "Content-Type" => "multipart/form-data; boundary=#{boundary}"
+      }
+  
+      req = Net::HTTP::Post.new(uri.request_uri)
+=end
+
     else
       nil
     end

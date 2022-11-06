@@ -9,19 +9,19 @@ class SlipTest < Test::Unit::TestCase
 
   def test_candidate_customer
     expected = [
-      '株式会社いろは',
+      #'株式会社いろは',
       '株式会社にほへと',
       '加納尚子',
       '(株)いろは',
       '(有)いろは',
-      #'（株）いろは',
+      '（株）いろは',
       #'（有）にほへと',
     ]
     assert_equal expected, @slip.candidate_customers[0,5]
   end
 
   def test_customer
-    assert_equal '株式会社いろは', @slip.customer
+    assert_equal '株式会社にほへと', @slip.customer
   end
 
   def test_candidate_deal_at
@@ -43,12 +43,12 @@ class SlipCompanyTest < Test::Unit::TestCase
 
   def test_candidate_customer
     expected = [
-      '株式会社いろは',
+      #'株式会社いろは',
       '有限会社にほへと',
       '(株)いろは',
       '(有)いろは',
       '（株）いろは',
-      #'（有）にほへと',
+      '（有）にほへと',
       #'合同会社いろは',
       #'税理士法人にほへと',
       #'いろはInc.',

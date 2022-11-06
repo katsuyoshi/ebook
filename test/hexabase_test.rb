@@ -17,6 +17,7 @@ class HexabaseTest < Test::Unit::TestCase
     @hb = Hexabase.instance
   end
 
+=begin
   def test_query_customer
     Time.stubs(:now).returns(Time.local(2022,11,4))
     assert_equal(1, @hb.query_item('customer' => '秋月電子').size)
@@ -31,6 +32,7 @@ class HexabaseTest < Test::Unit::TestCase
     Time.stubs(:now).returns(Time.local(2022,11,4))
     assert_equal(1, @hb.query_item('deal_kind' => '注文書').size)
   end
+=end
 
   def test_time_condition_today
     Time.stubs(:now).returns(Time.local(2022,11,4))
