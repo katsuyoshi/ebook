@@ -4,7 +4,6 @@ require "net/http"
 require 'singleton'
 require 'nokogiri'
 require 'active_support/all'
-require 'debug'
 
 class Time
   def to_hb_iso8601
