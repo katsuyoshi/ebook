@@ -76,7 +76,7 @@ def get_file_id params
 end
 
 
-def send_message message, params 
+def send_message message, params
   user_id = get_user_id params
   res = LineWorks.instance.send_message user_id, message
 end
@@ -113,13 +113,11 @@ def regist_file params
   item = hb.create
   lw.send_message user_id, 'レコードを作りました。'
   $session[:item] = item
-p item
   logger.info "created a new record"
   logger.info item
 
   # store file to S3 bucket
   s3 = S3.instance
-p [item['record_no'], file_info[:file_name]]
   path = s3.upload(file_info[:file_data], File.join(item['record_no'], file_info[:file_name]))
   lw.send_message user_id, 'ファイルを登録しました。'
 
@@ -169,7 +167,6 @@ def regist_slip force = false
   item['file']
   item['更新日時'] = Time.now.to_s
 
-p slip, item
   # check dupplicated
   unless force
     items = hb.query_item item
@@ -194,7 +191,7 @@ end
 def short_description_of item
   a = []
   a << "#{item['deal_kind']}" if item['deal_kind']
-  a << "#{item['deal_at']}" if item['deal_at']
+  a << "#{Time.parse(item['deal_at']).strftime('%m月%d日')}" if item['deal_at']
   a << "#{item['customer']}" if item['customer']
   a << "#{item['total']}円" if item['total']
   a.join(", ")
@@ -283,7 +280,6 @@ def handle_state params
     slip = $session[:slip]
     slip.deal_kind = params["content"]["postback"] || params["content"]["text"]
     $session[:state] = REGIST_STATE_SHOW_SUMMARY
-p $session
     handle_state params
 
   when REGIST_STATE_EDIT_DEAL_AT
@@ -312,13 +308,12 @@ p $session
 
 
   when QUERY_STATE_SHOW_SUMMARY
-p __LINE__, $session
     item = $session[:item] || {}
     m = description_of(item)
-    buttons = %w(種類条件を修正します 取引日条件を修正します 相手先条件を修正します 金額条件を修正します 検索を中止します)
+    buttons = %w(種類 取引日 相手先 金額 検索を中止します)
     
     buttons = ['検索します'] + buttons unless m.empty?
-    m = m.empty? ? "検索条件を入力してください" : "検索条件は以下のとおりです\n" + m
+    m = m.empty? ? "検索条件を選んでください" : "検索条件は以下のとおりです\n" + m
     p [m, buttons]
 
     send_query_buttons m, buttons, params
@@ -331,19 +326,19 @@ p __LINE__, $session
       $session[:state] = QUERY_STATE_SHOW_RESULT
       handle_state params
 
-    when '種類条件を修正します'
+    when '種類'
       send_query_buttons "書類の種類は？", %w(見積書 注文書 請求書 納品書 領収書), params
       $session[:state] = QUERY_STATE_EDIT_DEAL_KIND
  
-    when '取引日条件を修正します'
+    when '取引日'
       send_message "取引日条件は？", params
       $session[:state] = QUERY_STATE_EDIT_DEAL_AT
  
-    when '相手先条件を修正します'
+    when '相手先'
       send_message "相手先条件は？", params
       $session[:state] = QUERY_STATE_EDIT_DEAL_CUSTOMER
  
-    when '金額条件を修正します'
+    when '金額'
       send_message "金額条件は？", params
       $session[:state] = QUERY_STATE_EDIT_DEAL_TOTAL
 
@@ -387,9 +382,9 @@ p __LINE__, $session
     view = items[index...(index + QUERY_RESULT_VIEW_SIZE)]
 
     m = if view.empty?
-      m = "該当レコードはありません"
+      "該当レコードはありません"
     else
-      view.map{|i| short_description_of i}.join('\n')
+      view.map{|i| short_description_of i}.join("\n")
     end
 
     buttons = []
@@ -398,6 +393,7 @@ p __LINE__, $session
       buttons << "次のデータを見る" if index + QUERY_RESULT_VIEW_SIZE < items.size
       buttons << "CSVファイルをダウンロードする"
     end
+    buttons << "もう一度検索する"
     buttons << "終了する"
     send_query_buttons m, buttons, params
     $session[:state] = QUERY_STATE_SHOW_RESULT_RES
@@ -429,6 +425,10 @@ p "*" * 40
       $session[:state] = QUERY_STATE_SHOW_SUMMARY
       handle_state params
 
+    when "もう一度検索する"
+      $session[:state] = QUERY_STATE_SHOW_SUMMARY
+      handle_state params
+  
     when "終了する"
       reset
       $session[:state] = QUERY_STATE_SHOW_SUMMARY
