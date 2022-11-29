@@ -54,8 +54,8 @@ class Hexabase
     }
     payload = {
       'item' => {
-        '作成日時' => Time.now.to_s,
-        '更新日時' => Time.now.to_s,
+        '作成日時' => Time.now.to_hb_iso8601,
+        '更新日時' => Time.now.to_hb_iso8601,
       },
       'return_item_result' => true,
       'return_display_id' => true,
