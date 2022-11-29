@@ -25,7 +25,8 @@ class GoogleVision
     @jwt ||= begin
       header = {"alg" => "RS256", "typ" => "JWT"}
       @jwt_expire_at = (Time.now + 60 * 60)
-      config = JSON.parse(File.read(ENV['GOOGLE_APPLICATION_CREDENTIALS_PATH']))
+      config = JSON.parse(ENV['GOOGLE_APPLICATION_CREDENTIALS_JSON'])
+      #config = JSON.parse(File.read(ENV['GOOGLE_APPLICATION_CREDENTIALS_PATH']))
       claim = {
           "iss" => config['client_email'],
           "scope" => "https://www.googleapis.com/auth/cloud-vision",
